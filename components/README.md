@@ -4,6 +4,8 @@ TFX standard components come pre-packaged with TensorFlow, and are designed to h
 
 Each standard component is designed around common machine learning tasks, and encodes Google's ML best practices around tasks such as data monitoring and validation, training and serving data transformations, model evaluation, and serving.
 
+# Data Management
+
 ## ExampleGen
 [examplegen](./tfx-examplegen.png)
 - is the entry point to your pipeline, that ingests data
@@ -102,3 +104,148 @@ Each standard component is designed around common machine learning tasks, and en
   - brings consistent feature engineering at training and serving time to benefit your machine learning project
   - By including feature engineering directly into your model graph, you can reduce train-serving skew from differences in feature engineering, which is one of the largest sources of air and production machine learning systems
   - like many other TFX components, is also underpinned by Apache Beam, so you can scale up your feature transformations using distributed compute as your data grows
+
+# Model Management
+
+## Trainer
+
+[tfx-trainer](./tfx-trainer-1.png)
+
+[tfx-trainer](./tfx-trainer-2.png)
+
+- trains a tensor flow model in a standardized model format
+- supports TF1 estimators and native TF2 Keras models via the generic executor
+- allows you to parameterize your training and evaluation arguments, such as the number of steps as shown in the example
+- INPUTS:
+  - a transform TF examples state artifact 
+  - transform graph produced by the transform component
+  - A data schema artifact from the SchemaGen component
+    - that trainer checks its input data features against.
+  - And your TensorFlow modeling code typically defined in a model.py file
+- OUTPUTS:
+  - produces at least one model for inference and serving in a TensorFlow saved model format
+    - contains a complete TensorFlow program, including weights and computation
+  - Optionally, another model for evaluation such as in a Val saved model we'll also be emitted. The Val saved model contains additional information that allows the TensorFlow model analysis library. To compute the same evaluation metrics defined in the model in a distributed manner over a large amount of data and user defined slices
+- benefits in pipeline
+  - brings standardization to your machine learning projects
+  - format does not require the original model building code to run, which makes it useful for sharing and deploying
+  - By exporting standardized model formats, you can more easily share your models on platforms like TF hub and deploy them across a variety of platforms. Such as the browser with TensorFlow JS, and mobile phones and edge devices, with TF light through the model rewriting library
+  - inherit the benefits of using TensorFlow for accelerating your model training, such as the TF distribute APIs, for distributing training across multiple cores and machines
+  - utilizing hardware accelerators like GPUs and TPUs for training
+
+## Tuner
+
+[tuner](./tfx-tuner.png)
+- makes extensive use of the Python Keras tuner API for tuning hyperparameter
+- modify the trainer configurations to directly ingest the best hyperparameters, found from the most recent tuner run 
+- You typically don't run the tuner component on every run, due to the computational cost and time but instead configure it for one off execution.
+- INPUTS:
+  - transformed data
+  - transformed graph artifacts
+- OUTPUTS:
+  - a hyper parameter artifact
+- benefits in pipeline
+  - tight integration with the trainer component to perform hyper parameter tuning in a continuous training pipeline.
+
+## Evaluator
+
+[evaluator](./tfx-evaluator.png)
+
+- how do you know how well it performed?
+- model performance evaluation as inputs
+- will use the model created by the trainer and the original input data artifact
+- INPUTS
+  - use the model created by the trainer in the original input data artifact. 
+    - It will perform a thorough analysis using the TensorFlow model analysis library. 
+    - To compute mean machine learning metrics across data splits and slices, it's typically not enough to look at high level results across your entire data set. 
+- OUTPUTS
+  - two artifacts and evaluation metrics artifact that contains configurable model performance metrics slices
+  - And a model blessing artifact that indicates whether the models performance was higher than the configured thresholds and that it is ready for production.
+- benefits in pipeline
+  - bringing standardization to your machine learning projects for easier sharing and reuse
+    - many teams would write custom evaluation code that was buggy and hard to maintain with a lot of duplication and made it hard to replicate
+  - the ability to get your pipeline from pushing the poor performing model to production and a continuous training scenario.
+  - assured that your pipeline will only graduate a model to production when it has exceeded the performance of previous models
+
+## InfraEvalutor
+
+- used as an early warning layer before pushing a model to production
+- focuses on the compatibility between the model server binary, such as TensorFlow serving, and the model ready to deploy
+- it is the users responsibility to configure the environment correctly. And InfraValidator only interacts with the model server in the user configured environment to see whether it works well.
+  - Configuring this environment correctly will ensure that InfraValidation, passing or failing indicates whether the model would be survivable in the production serving environment
+  - 
+- The name InfraValidator came from the fact that it is validating the model in the actual model serving infrastructure
+- If evaluator guarantees that performance of the model, InfraValidator guarantees that the model is mechanically fine, and it prevents bad models from being pushed to production
+- INPUTS
+  - takes the saved model artifact from the trainer component
+    - Launches a sandbox model server with the model and test whether it can be successfully loaded and optionally queried using the input data artifact from the example Gen component.
+- OUTPUT
+  - resulting output InfraValidation artifact will be generated in the blessed output in the same way that evaluator does.
+- benefits in pipeline
+  - InfraValidator brings an additional validation check to your T effects pipeline by ensuring that only top performing models are graduated production and that they do not have any failure causing mechanical issues.
+  - brings standardization to this model infra check and is configurable to mirror model serving environments such as Kubernetes clusters and TF serving
+
+## Pusher
+
+[pusher](./tfx-pusher.png)
+
+- used to push a validated model to a deployment target during model training or retraining.
+- on one or more blessings from other validation componet as input to decide whether to push the model.
+- These targets may be TensorFlow light if you're using a mobile application TensorFlow JS If you're deploying in a JavaScript environment. 
+- Or TensorFlow serving, if you're deploying to Claudia platform where it Kubernetes cluster. 
+- The pusher component brings the benefits of a production gatekeeper to your TFX pipeline. 
+- INPUTS
+  - Evaluator blesses the model if the new trained model is good enough to be pushed to production. 
+  - InfraValidator blesses the model if the model is mechanically survivable in a production environment. 
+- OUPUTS
+  - As output a pusher component will wrap model versioning data with the train TensorFlow saved model for export to various deployment targets.
+- benefits in pipeline
+  - ensure that only the best performing models that are mechanically sound, make it to production.
+  - Machine learning systems are usually a part of larger applications. So having a check before production keeps your applications more reliable and available.
+  - pusher standardizes the code for pipeline model export for reuse and sharing across machine learning projects.
+
+## BulkInferrer
+
+[bulk-inferrer](./tfx-bulkinferrer.png)
+
+- used to perform batch inference on unlabeled TF examples.
+- typically deployed after an evaluator component to perform inference with a validated model, or after the trainer component to directly perform inference on an exported model. 
+- currently performs in memory model inference and remote inference. 
+- for your machine learning project to directly include inference in your pipeline.
+  - Remote inference requires the model to be hosted on cloud AI platform.
+- INPUTS
+  - reads from the following artifacts, 
+  - a trained TensorFlow saved model from the trainer component, 
+  - optionally a model blessing artifact from the evaluator component.
+  - Input data TF example artifacts from the example Gem component typically these would be unlabeled examples and the configured test data partition.
+- OUTPUTS
+  - generates a inference result proto, which contains the original features and the prediction results. 
+
+## Pipeline nodes
+
+[pipeline](./tfx-pipelinenode.png)
+
+Pipeline nodes are special purpose classes for performing advanced metadata operations
+such as 
+1. importing external artifacts into ML metadata, 
+2. performing queries of current ML metadata based on artifacts properties and their history.
+
+Nodes
+
+
+- ImporterNode
+  - [importernde](./tfx-importernode.png)
+    - The most common pipeline node is the importer node, which is a specialty effects node that registers an external resource into the ML metadata library, so downstream nodes can use the registered artifact as input. The primary use case for this node is to bring in external artifacts like a schema into the TFX pipeline for use by the transform in trainer components. 
+      - The schema Gen component can generate a schema based on inferring properties about your data on your first pipeline run. However, you will adapt the schema to codify your expectations over time with additional constraints on the features. Instead of regenerating the schema for each pipeline run, you can use the importer node to bring a previously generated or updated schema into your pipeline.
+- ResolverNode
+  - [resolvernode](./tfx-resolvernode.png)
+    - Resolver node is a special TFX node that handles special artifact resolution logistics that will be used as inputs for downstream nodes. 
+    - The model resolver is only required if you are performing model validation in addition to evaluation. 
+    - In the case above, we validate against the latest blessed model. 
+    - If no model has been blessed before, the evaluator will make the current candidate model the first blessed model.
+- [resolverlatest](./tfx-resolverlatest.png)
+- LatestArtifactResolver
+  - returns the latest and artifacts in a given channel
+    - This is useful for comparing multiple run artifacts, such as those generated by the evaluation component.
+- LatestBlessedModelResolver
+  - returns the latest validated and blessed model. This is useful for retrieving the best-performing model for exporting outside of the pipeline for one-off evaluation or inference tasks outside of the TFX Pipelines goal, such as hosting a model for exporting outside of the pipeline

@@ -7,7 +7,7 @@ Each standard component is designed around common machine learning tasks, and en
 # Data Management
 
 ## ExampleGen
-[examplegen](./tfx-examplegen.png)
+![examplegen](./tfx-examplegen.png)
 - is the entry point to your pipeline, that ingests data
 - supports out-of-the-box ingestion of external data sources such as CSV, TF Records, Avro, and Parquet
 - supports external ingestion of CSV, Avro, Parquet, and TF Record data sources
@@ -34,11 +34,11 @@ Each standard component is designed around common machine learning tasks, and en
 - brings configurable, and reproducible data partitioning and shuffling into TF Records, a common data representation used by all components in your pipeline
 - Just like code, the ability to version your data kit, is critical to effectively monitoring your data and model performance in production.
 
-[examplegen-span](./tfx-examplegen-span.png)
+![examplegen-span](./tfx-examplegen-span.png)
 
 ## StatisticsGen
 
-[statisticsgen](./tfx-statisticsgen.png)
+![statisticsgen](./tfx-statisticsgen.png)
 - INPUT: take in TF examples from the ExampleGen component
 - OUTPUT: produces a data set statistics artifact, that contains features statistics used for downstream components
 - performs a complete pass over your data, using Apache Beam, and the TensorFlow Data Validation Library, to calculate summary statistics for each of your features over your configured Train, Dev and Test splits
@@ -50,7 +50,7 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## SchemaGen
 
-[schemagen](tfx-schemagen.png)
+![schemagen](tfx-schemagen.png)
 - a description of your input data called a schema that can be automatically generated
 - INPUT: reads the StatisticsGen artifact to infer characteristics of your input data from the observed feature data distributions
 - OUTPUT: produces a schema artifact, a schema.proto description of your data's characteristics - the schema is an instance of schema.proto
@@ -64,7 +64,7 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## ExampleValidator
 
-[examplevalidator](tfx-examplevalidator.png)
+![examplevalidator](tfx-examplevalidator.png)
 - identifies any anomalies in the example data by comparing data statistics computed by the StatisticsGen pipeline component against a schema
 - underpins Transform
 - benefits in pipeline
@@ -80,8 +80,8 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## Transform
 
-[transform](./tfx-transform.png)
-[transform-details](./tfx-transform-diagram.png)
+![transform](./tfx-transform.png)
+![transform-details](./tfx-transform-diagram.png)
 
 - performs feature engineering on the TF examples data artifact emitted from the ExampleGen component
 - you can define feature transformations with TF Transform in TensorFlow operations
@@ -109,9 +109,9 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## Trainer
 
-[tfx-trainer](./tfx-trainer-1.png)
+![tfx-trainer](./tfx-trainer-1.png)
 
-[tfx-trainer](./tfx-trainer-2.png)
+![tfx-trainer](./tfx-trainer-2.png)
 
 - trains a tensor flow model in a standardized model format
 - supports TF1 estimators and native TF2 Keras models via the generic executor
@@ -135,7 +135,7 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## Tuner
 
-[tuner](./tfx-tuner.png)
+![tuner](./tfx-tuner.png)
 - makes extensive use of the Python Keras tuner API for tuning hyperparameter
 - modify the trainer configurations to directly ingest the best hyperparameters, found from the most recent tuner run 
 - You typically don't run the tuner component on every run, due to the computational cost and time but instead configure it for one off execution.
@@ -149,7 +149,7 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## Evaluator
 
-[evaluator](./tfx-evaluator.png)
+![evaluator](./tfx-evaluator.png)
 
 - how do you know how well it performed?
 - model performance evaluation as inputs
@@ -187,7 +187,7 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## Pusher
 
-[pusher](./tfx-pusher.png)
+![pusher](./tfx-pusher.png)
 
 - used to push a validated model to a deployment target during model training or retraining.
 - on one or more blessings from other validation componet as input to decide whether to push the model.
@@ -206,7 +206,7 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## BulkInferrer
 
-[bulk-inferrer](./tfx-bulkinferrer.png)
+![bulk-inferrer](./tfx-bulkinferrer.png)
 
 - used to perform batch inference on unlabeled TF examples.
 - typically deployed after an evaluator component to perform inference with a validated model, or after the trainer component to directly perform inference on an exported model. 
@@ -223,7 +223,7 @@ Each standard component is designed around common machine learning tasks, and en
 
 ## Pipeline nodes
 
-[pipeline](./tfx-pipelinenode.png)
+![pipeline](./tfx-pipelinenode.png)
 
 Pipeline nodes are special purpose classes for performing advanced metadata operations
 such as 
@@ -234,18 +234,63 @@ Nodes
 
 
 - ImporterNode
-  - [importernde](./tfx-importernode.png)
+  - ![importernode](./tfx-importernode.png)
     - The most common pipeline node is the importer node, which is a specialty effects node that registers an external resource into the ML metadata library, so downstream nodes can use the registered artifact as input. The primary use case for this node is to bring in external artifacts like a schema into the TFX pipeline for use by the transform in trainer components. 
       - The schema Gen component can generate a schema based on inferring properties about your data on your first pipeline run. However, you will adapt the schema to codify your expectations over time with additional constraints on the features. Instead of regenerating the schema for each pipeline run, you can use the importer node to bring a previously generated or updated schema into your pipeline.
 - ResolverNode
-  - [resolvernode](./tfx-resolvernode.png)
+  - ![resolvernode](./tfx-resolvernode.png)
     - Resolver node is a special TFX node that handles special artifact resolution logistics that will be used as inputs for downstream nodes. 
     - The model resolver is only required if you are performing model validation in addition to evaluation. 
     - In the case above, we validate against the latest blessed model. 
     - If no model has been blessed before, the evaluator will make the current candidate model the first blessed model.
-- [resolverlatest](./tfx-resolverlatest.png)
+- ![resolverlatest](./tfx-resolverlatest.png)
 - LatestArtifactResolver
   - returns the latest and artifacts in a given channel
     - This is useful for comparing multiple run artifacts, such as those generated by the evaluation component.
 - LatestBlessedModelResolver
   - returns the latest validated and blessed model. This is useful for retrieving the best-performing model for exporting outside of the pipeline for one-off evaluation or inference tasks outside of the TFX Pipelines goal, such as hosting a model for exporting outside of the pipeline
+
+# Summary
+In any ML development process the first step is to ingest the training and test datasets. The ExampleGen component ingests data into a TFX pipeline. It consumes external files/services to generate a set file files in the TFRecord format, which will be used by other TFX components. It can also shuffle the data and split into an arbitrary number of partitions.
+
+The StatisticsGen component generates data statistics that can be used by other TFX components. StatisticsGen uses TensorFlow Data Validation. StatisticsGen generate statistics for each split in the ExampleGen component's output. In our case there two splits: train and eval.
+
+The generated statistics can be visualized using the tfdv.visualize_statistics() function from the TensorFlow Data Validation library or using a utility method of the InteractiveContext object. In fact, most of the artifacts generated by the TFX components can be visualized using InteractiveContext.
+
+Some TFX components use a description input data called a schema. The schema is an instance of schema.proto. It can specify data types for feature values, whether a feature has to be present in all examples, allowed value ranges, and other properties. SchemaGen automatically generates the schema by inferring types, categories, and ranges from data statistics. The auto-generated schema is best-effort and only tries to infer basic properties of the data. It is expected that developers review and modify it as needed. SchemaGen uses TensorFlow Data Validation. The `SchemaGen` component generates the schema using the statistics for the `train` split. The statistics for other splits are ignored.
+
+The ExampleValidator component identifies anomalies in data. It identifies anomalies by comparing data statistics computed by the StatisticsGen component against a schema generated by SchemaGen or imported by ImporterNode.
+
+ExampleValidator can detect different classes of anomalies. For example it can:
+perform validity checks by comparing data statistics against a schema
+detect training-serving skew by comparing training and serving data.
+detect data drift by looking at a series of data.
+The ExampleValidator component validates the data in the eval split only. Other splits are ignored.
+
+The Transform component performs data transformation and feature engineering. The Transform component consumes tf.Examples emitted from the ExampleGen component and emits the transformed feature data and the SavedModel graph that was used to process the data. The emitted SavedModel can then be used by serving components to make sure that the same data pre-processing logic is applied at training and serving.
+The Transform component requires more code than many other components because of the arbitrary complexity of the feature engineering that you may need for the data and/or model that you're working with. It requires code files to be available which define the processing needed.
+The Trainer component trains a model using TensorFlow.
+Trainer takes:
+tf.Examples used for training and eval.
+A user provided module file that defines the trainer logic.
+A data schema created by SchemaGen or imported by ImporterNode.
+A proto definition of train args and eval args.
+An optional transform graph produced by upstream Transform component.
+An optional base models used for scenarios such as warmstarting training.
+The Tuner component makes use of the Python KerasTuner API to tune your model's hyperparameters. It tighty integrates with the Transform and Trainer components for model hyperparameter tuning in continuous training pipelines as well as advanced use cases such as feature selection, feature engineering, and model architecture search.
+
+Tuner takes:
+A user provided module file (or module fn) that defines the tuning logic, including model definition, hyperparameter search space, objective etc.
+tf.Examples used for training and eval.
+Protobuf definition of train args and eval args.
+(Optional) Protobuf definition of tuning args.
+(Optional) transform graph produced by an upstream Transform component.
+(Optional) A data schema created by a SchemaGen pipeline component and optionally altered by the developer.
+
+The Evaluator component analyzes model performance using the TensorFlow Model Analysis library. It runs inference requests on particular subsets of the test dataset, based on which slices are defined by the developer. Knowing which slices should be analyzed requires domain knowledge of what is important in this particular use case or domain.
+The Evaluator can also optionally validate a newly trained model against a previous model. In this lab, you only train one model, so the Evaluator automatically will label the model as "blessed".
+The InfraValidator component acts as an additional early warning layer by validating a candidate model in a sandbox version of its serving infrastructure to prevent an unservable model from being pushed to production. Compared to the Evaluator component above which validates a model's performance, the InfraValidator component is validating that a model is able to generate predictions from served examples in an environment configured to match production. The config below takes a model and examples, launches the model in a sand-boxed TensorflowServing model server from the latest image in a local docker engine, and optionally checks that the model binary can be loaded and queried before "blessing" it for production.
+
+he `Pusher` component checks whether a model has been "blessed", and if so, deploys it by pushing the model to a well known file destination.
+
+In the lab, you used TFX to analyze, understand, and pre-process the dataset and train, analyze, validate, and deploy a multi-class classification model to predict the type of forest cover from cartographic features. You utilized a TFX Interactive Context for prototype development of a TFX pipeline directly in a Jupyter notebook. Next, you worked with the TFDV library to modify your dataset schema to add feature constraints to catch data anamolies that can negatively impact your model's performance. You utilized TFT library for feature proprocessing for consistent feature transformations for your model at training and serving time. Lastly, using the TFMA library, you added model performance constraints to ensure you only push more accurate models than previous runs to production.
